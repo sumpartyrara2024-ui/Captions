@@ -37,6 +37,7 @@ class MainActivity : Activity() {
     private var note = ""
     private var lang = "ja"
     private var workerUrl = ""
+    private var menuLong = false
 
     private val net = Executors.newSingleThreadExecutor()
     private val ui = Handler(Looper.getMainLooper())
@@ -87,9 +88,13 @@ class MainActivity : Activity() {
         web = WebView(this)
         root.addView(web, FrameLayout.LayoutParams(match, match))
 
+        val homeBtn = makeButton("\uD83C\uDFE0 Home") { goHome() }
+        val exitBtn = makeButton("\u2716 Exit") { finish() }
+
         val urlBox = EditText(this)
         urlBox.setSingleLine()
-        urlBox.setText(START_URL)
+        urlBox.hint = "Type a web address"
+        urlBox.setHintTextColor(Color.LTGRAY)
         urlBox.setTextColor(Color.WHITE)
         urlBox.setBackgroundColor(Color.argb(170, 0, 0, 0))
         urlBox.imeOptions = EditorInfo.IME_ACTION_GO
@@ -98,6 +103,12 @@ class MainActivity : Activity() {
             true
         }
 
+        val row = LinearLayout(this)
+        row.orientation = LinearLayout.HORIZONTAL
+        row.addView(homeBtn, LinearLayout.LayoutParams(wrap, wrap))
+        row.addView(exitBtn, LinearLayout.LayoutParams(wrap, wrap))
+        row.addView(urlBox, LinearLayout.LayoutParams(0, wrap, 1f))
+
         status = TextView(this)
         status.setTextColor(Color.YELLOW)
         status.setBackgroundColor(Color.argb(170, 0, 0, 0))
@@ -105,7 +116,7 @@ class MainActivity : Activity() {
 
         val top = LinearLayout(this)
         top.orientation = LinearLayout.VERTICAL
-        top.addView(urlBox)
+        top.addView(row)
         top.addView(status)
         root.addView(top, FrameLayout.LayoutParams(match, wrap, Gravity.TOP))
 
@@ -126,6 +137,7 @@ class MainActivity : Activity() {
         web.webChromeClient = WebChromeClient()
         web.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView, url: String?) {
+                if (url == START_URL) view.clearHistory()
                 view.evaluateJavascript(injectJs, null)
             }
         }
@@ -134,6 +146,35 @@ class MainActivity : Activity() {
         setContentView(root)
         web.loadUrl(START_URL)
         web.requestFocus()
+    }
+
+    private fun makeButton(label: String, action: () -> Unit): TextView {
+        val idle = Color.argb(170, 40, 40, 40)
+        val b = TextView(this)
+        b.text = label
+        b.textSize = 18f
+        b.setTextColor(Color.WHITE)
+        b.setBackgroundColor(idle)
+        b.setPadding(28, 14, 28, 14)
+        b.isFocusable = true
+        b.isClickable = true
+        b.setOnFocusChangeListener { v, hasFocus ->
+            v.setBackgroundColor(if (hasFocus) Color.rgb(255, 213, 74) else idle)
+            (v as TextView).setTextColor(if (hasFocus) Color.BLACK else Color.WHITE)
+        }
+        b.setOnClickListener { action() }
+        return b
+    }
+
+    private fun goHome() {
+        web.loadUrl(START_URL)
+        web.requestFocus()
+    }
+
+    private fun toggleLanguage() {
+        lang = if (lang == "ja") "tl" else "ja"
+        note = "language switched"
+        refreshStatus()
     }
 
     private fun refreshStatus() {
@@ -200,14 +241,34 @@ class MainActivity : Activity() {
         web.requestFocus()
     }
 
+    // Menu button: short press switches language, long press goes Home
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         if (keyCode == KeyEvent.KEYCODE_MENU) {
-            lang = if (lang == "ja") "tl" else "ja"
-            note = "language switched"
-            refreshStatus()
+            event?.startTracking()
             return true
         }
         return super.onKeyDown(keyCode, event)
+    }
+
+    override fun onKeyLongPress(keyCode: Int, event: KeyEvent?): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_MENU) {
+            menuLong = true
+            goHome()
+            return true
+        }
+        return super.onKeyLongPress(keyCode, event)
+    }
+
+    override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_MENU) {
+            if (menuLong) {
+                menuLong = false
+            } else {
+                toggleLanguage()
+            }
+            return true
+        }
+        return super.onKeyUp(keyCode, event)
     }
 
     override fun onBackPressed() {
@@ -215,6 +276,6 @@ class MainActivity : Activity() {
     }
 
     companion object {
-        const val START_URL = "https://www.w3schools.com/html/mov_bbb.mp4"
+        const val START_URL = "file:///android_asset/home.html"
     }
 }
