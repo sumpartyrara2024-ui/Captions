@@ -3,7 +3,7 @@
   window.__capInit = true;
 
   var CHUNK_SECONDS = 6;
-  var MIN_RMS = 0.004;
+  var MIN_RMS = 0.01;
   var OUT_RATE = 16000;
 
   function send(type, value) {
